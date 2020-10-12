@@ -1,0 +1,256 @@
+
+	-------------------------------------------
+	     SpringBootMongoDB-Security
+
+=> We can add one/multiple users for MongoDatabase, by default no users are provided.
+=> Steps for adding user and secure login process is given here.
+
+---Steps-------
+1. Starter Mongo Server
+cmd> mongod
+
+2. Start Mongo Client
+cmd> mongo
+
+3. Switch to database  
+> use nit 
+
+4. Add user
+
+db.createUser(
+{
+  user : "nit",
+  pwd  : "raghu",
+  roles: ["readWrite", "dbAdmin"]
+}
+)
+
+=> Successfully added user
+
+5. Close both mongo client and server
+
+6.** Start mongo server in  authentication mode
+
+cmd> mongod --auth
+
+7. Start Mongo Client
+cmd> mongo
+
+8. Type few commands like
+
+> use nit
+> show collections
+
+Now it will show error message as unauthorized.
+
+> db.auth("nit","raghu")   //for login
+
+9. Now you can type any command
+
+> use nit
+> show collections
+> db.employee.find().pretty()
+
+10. For Logout
+> db.logout()
+=====================================================
+*)Note:
+a) Start mongo server in Secure mode (mongod --auth), and try to run our last
+   Spring boot application (without un/pwd), then 
+   MongoCommandException: Command failed with error 13 (Unauthorized)
+
+b) If we given invalid un/pwd , then MongoCommandException: 
+Command failed with error 18 (AuthenticationFailed): 'Authentication failed.'
+
+c) add below properties in application.properties for mongoDB user/pwd
+
+spring.data.mongodb.username=nit
+spring.data.mongodb.password=raghu
+
+and also
+
+spring.data.mongodb.host=localhost
+spring.data.mongodb.port=27017
+spring.data.mongodb.database=nit
+
+d) if we start mongo server in normal mode (cmd> mongod) [not in auth mode]
+  then need not to provide un/pwd at SpringBoot application even at Mongo Client.
+
+cmd> mongod           [normal mode]
+cmd> mongod --auth    [secure mode]
+====================================================================
+	    Spring Boot MongoDB - Database Operations
+====================================================================
+=> MongoRepository(I) given by 'spring-boot-starter-data-mongodb'.
+=> For this one impl class is provided by data-mongo ie SimpleMongoRepository(C)
+
+> ctrl+shift+T > mongorepository > dbl click on same
+> select interface name and press F4 key
+> click on 'SimpleMongoRepository' at type Hierarchy
+
+=> One Proxy class is generated at runtime using SimpleMongoRepository
+   design which looks like (similier to this)
+  class Proxy45  extends SimpleMongoRepository<Employee,String> {
+        ...//.....
+  }
+
+=> we can get proxy details using Reflection detals
+	@Autowired
+	private EmployeeRepository repo;
+	
+	and
+
+	System.out.println(repo.getClass().getName());
+
+--------------------------------------------------------
+CrudRepository<T, ID>
+PagingAndSortingRepository<T, ID>
+MongoRepository<T, ID>
+
+*)Note: No tables concept in MongoDB, So, no ddl-auto=___ property in MongoDB.
+	    Better use repo.deleteAll() in code.
+
+
+a) save(Object):object
+  This method is used to perform either insert/update (based on ID)
+  and returns same object with ID effected/updated.
+
+ We can even provide ID also manually (or use some code for ID generation)
+ ie at application side we can pass ID(String-Hexa Decimal number).
+
+--Example---
+1. application.properties
+spring.data.mongodb.host=localhost
+spring.data.mongodb.port=27017
+spring.data.mongodb.database=nit
+spring.data.mongodb.username=nit
+spring.data.mongodb.password=raghu
+
+2. Model 
+package in.nareshit.raghu.model;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@RequiredArgsConstructor
+@AllArgsConstructor
+@Document
+public class Student {
+	@Id
+	private String id;
+	
+	@NonNull
+	private Integer stdId;
+	@NonNull
+	private String stdName;
+	@NonNull
+	private Double stdFee;
+	
+}
+
+3. Repository interface
+package in.nareshit.raghu.repo;
+
+import org.springframework.data.mongodb.repository.MongoRepository;
+
+import in.nareshit.raghu.model.Student;
+
+public interface StudentRepository 
+	extends MongoRepository<Student, String> {
+
+}
+
+4. Runner class
+package in.nareshit.raghu.runner;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
+
+import in.nareshit.raghu.model.Student;
+import in.nareshit.raghu.repo.StudentRepository;
+
+@Component
+public class StudentTestOneRunner implements CommandLineRunner {
+	@Autowired
+	private StudentRepository repo;
+	
+	@Override
+	public void run(String... args) throws Exception {
+		repo.deleteAll(); // like ddl-auto-create
+	
+		// this method returns same object with id generated
+		Student s = repo.save(new Student(101,"SAM",2500.0));// insert
+		repo.save(new Student(s.getId(),101,"SAM-A",2800.0));// update
+		
+		//manually provide ID(allowed)
+		repo.save(new Student("A10102B54DEF",102,"SYED",3500.0));// insert
+		repo.save(new Student("A10102B54DE0",102,"SYED",3500.0));// insert
+		
+		System.out.println(s.getId());
+		System.out.println("___Done___");
+		
+	}
+
+}
+
+========================================================
+*)Note: we can even write Customization code for ID generator.
+
+package in.nareshit.raghu.gen;
+import java.util.UUID;
+public class IdGenerator {
+
+	public static String getId() {
+		//JDK 1.5
+		return UUID.randomUUID().toString()
+		.replaceAll("-", "")
+		.substring(0, 8);
+	}
+	
+	
+}
+
+and Runner class code:
+
+package in.nareshit.raghu.runner;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
+
+import in.nareshit.raghu.gen.IdGenerator;
+import in.nareshit.raghu.model.Student;
+import in.nareshit.raghu.repo.StudentRepository;
+
+@Component
+public class StudentTestOneRunner implements CommandLineRunner {
+	@Autowired
+	private StudentRepository repo;
+	
+	@Override
+	public void run(String... args) throws Exception {
+		repo.deleteAll(); // like ddl-auto-create
+	
+		// this method returns same object with id generated
+		Student s = repo.save(new Student(IdGenerator.getId(),101,"SAM",2500.0));// insert
+		repo.save(new Student(s.getId(),101,"SAM-A",2800.0));// update
+		
+		//manually provide ID(allowed)
+		repo.save(new Student(IdGenerator.getId(),102,"SYED",3500.0));// insert
+		repo.save(new Student(IdGenerator.getId(),102,"SYED",3500.0));// insert
+		
+		System.out.println(s.getId());
+		System.out.println("___Done___");
+		
+	}
+
+}
