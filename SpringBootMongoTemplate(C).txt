@@ -1,0 +1,311 @@
+				Date : 19/10/2020
+				Spring Boot 8PM
+				  Mr. RAGHU
+		-------------------------------------------
+			    Spring Boot MongoDB 
+
+*) MongoTemplate(C) :-
+  This is a class defined by Spring Data MongoDB, used to perform DB operation
+  without using any repository interface.
+
+=> This is Auto-configured by Spring Boot MongoDB. Need to create object to this class.
+=> It provides method using generics. So, works for any model class. 
+   Like save(), get()...etc
+
+=> We can directly use MongoTemplate as auto-wired property and call methods.
+
+---Operations------
+1. save(object)  [or] save(object,collectioName)
+
+save(object) method used to take class name as default as collection name to insert data,
+we can even use overloaded method save(object,collectioName) to specify our own collectioName
+
+--code--
+a) Model class
+package in.nareshit.raghu.model;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Document
+public class Employee {
+	@Id
+	private String id;
+	
+	private Integer empId;
+	private String empName;
+	private Double empSal;
+}
+
+b) Runner class#1
+package in.nareshit.raghu.runner;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.stereotype.Component;
+
+import in.nareshit.raghu.model.Employee;
+
+@Component
+public class TestMongoOperations implements CommandLineRunner {
+	@Autowired
+	private MongoTemplate mt;
+	
+	@Override
+	public void run(String... args) throws Exception {
+		
+		mt.dropCollection("emp");
+		
+		//save(object,collectioName)
+		mt.save(new Employee("A001", 101, "A", 3.3),"emp");
+		mt.save(new Employee("A002", 103, "B", 4.3),"emp");
+		mt.save(new Employee("A003", 102, "C", 5.3),"emp");
+		
+		System.out.println("__DONE__");
+		
+	}
+
+}
+
+c) Runner class#2
+package in.nareshit.raghu.runner;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.stereotype.Component;
+
+import in.nareshit.raghu.model.Employee;
+
+@Component
+public class TestMongoOperations implements CommandLineRunner {
+	@Autowired
+	private MongoTemplate mt;
+	
+	@Override
+	public void run(String... args) throws Exception {
+		
+		mt.dropCollection("employee");
+		
+		mt.save(new Employee("A001", 101, "A", 3.3));
+		mt.save(new Employee("A002", 103, "B", 4.3));
+		mt.save(new Employee("A003", 102, "C", 5.3));
+		
+		System.out.println("__DONE__");
+		
+	}
+
+}
+
+c) application.properties
+spring.data.mongodb.host=localhost
+spring.data.mongodb.port=27017
+spring.data.mongodb.database=nit
+spring.data.mongodb.username=nit
+spring.data.mongodb.password=raghu
+
+==========================================
+2) findAll(className,collectionName) [or] findAll(className)
+  Abvoe methods gets data from Db collection as List<T> format.
+  Here T=Classname.
+
+if classname and collection name both are same then use 
+   mt.findAll(T.class)  [className)
+
+else use
+  mt.findAll(T.class, "collectionName")
+
+3) findById(id,T.class):T   [T=Model class name]
+  This method is used to fetch data from DB collection using PK(ID).
+  If Id exist then JSON Document is converted into Object
+  else it returns null (it indicates no object).
+
+Ex:
+ Employee e = mt.findByid("AA001",Employee.class);
+
+--code---
+Runner class:
+package in.nareshit.raghu.runner;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.stereotype.Component;
+
+import in.nareshit.raghu.model.Employee;
+
+@Component
+public class TestMongoOperations implements CommandLineRunner {
+	@Autowired
+	private MongoTemplate mt;
+	
+	@Override
+	public void run(String... args) throws Exception {
+		
+		mt.dropCollection("employee");
+		
+		//save(object,collectioName)
+		mt.save(new Employee("A001", 101, "A", 3.3));
+		mt.save(new Employee("A002", 103, "B", 4.3));
+		mt.save(new Employee("A003", 102, "C", 5.3));
+		
+		//List<Employee>  list =  mt.findAll(Employee.class,"emp");
+		List<Employee>  list =  mt.findAll(Employee.class);
+		list.forEach(System.out::println);
+		
+		System.out.println("____________________");
+		//Employee emp = mt.findById("A001", Employee.class);
+		Employee emp = mt.findById("A009", Employee.class);
+		System.out.println(emp);
+		
+		System.out.println("__DONE__");
+		
+	}
+
+}
+--------------------------------------------------------------------
+4) findAndModify(query,update,T.class)
+ This method is used to fetch data based on given query (condition)
+ and modify data for given update type (variable and data)
+ for a given collection.
+
+
+=> Query is used to fetch data from Collection that need to be modified
+Ex:
+Query query = new Query();
+query.addCriteria(Criteria.where("dept").is("DEV"));
+
+=> Update is used to specify which key=val combination need to be modified for
+   given Result by Query.
+
+Ex:
+	Update update = new Update();
+	update.set("empSal", 600.0);
+	update.set("empName", "A NEW");
+
+=> Finally call method using input Query and Update with ClassType
+
+  mt.findAndModify(query, update, Employee.class);
+
+--code: Runner class--
+package in.nareshit.raghu.runner;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.stereotype.Component;
+
+import in.nareshit.raghu.model.Employee;
+
+@Component
+public class TestMongoOperations implements CommandLineRunner {
+	@Autowired
+	private MongoTemplate mt;
+	
+	@Override
+	public void run(String... args) throws Exception {
+		
+		mt.dropCollection("employee");
+		
+		//save(object,collectioName)
+		mt.save(new Employee("A001", 101, "A", 3.3,"DEV"));
+		mt.save(new Employee("A002", 102, "B", 4.3,"QA"));
+		mt.save(new Employee("A003", 103, "C", 5.3,"DEV"));
+		mt.save(new Employee("A004", 104, "D", 5.3,"QA"));
+		mt.save(new Employee("A005", 105, "E", 5.3,"DEV"));
+
+		//--------------------------------------
+	
+		Query query = new Query();
+		//Like: select * from employee where dept=DEV
+		//query.addCriteria(Criteria.where("dept").is("DEV"));
+
+		//Like: select * from employee where empId=101
+		query.addCriteria(Criteria.where("empId").is(101));
+		
+		// update empsal=600
+		Update update = new Update();
+		update.set("empSal", 600.0);
+		update.set("empName", "A NEW");
+		
+		mt.findAndModify(query, update, Employee.class);
+		
+		
+		
+		
+		System.out.println("__DONE__");
+		
+	}
+
+}
+===============================================
+*) findAndRemove(query,className)
+  This method is used to remove data which are actually selected for given condition
+
+--code: Runner class--
+package in.nareshit.raghu.runner;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.stereotype.Component;
+
+import in.nareshit.raghu.model.Employee;
+
+@Component
+public class TestMongoOperations implements CommandLineRunner {
+	@Autowired
+	private MongoTemplate mt;
+	
+	@Override
+	public void run(String... args) throws Exception {
+		
+		mt.dropCollection("employee");
+		
+		//save(object,collectioName)
+		mt.save(new Employee("A001", 101, "A", 3.3,"DEV"));
+		mt.save(new Employee("A002", 102, "B", 4.3,"QA"));
+		mt.save(new Employee("A003", 103, "C", 5.3,"DEV"));
+		mt.save(new Employee("A004", 104, "D", 5.3,"QA"));
+		mt.save(new Employee("A005", 105, "E", 5.3,"DEV"));
+
+		Query query = new Query();
+		query.addCriteria(Criteria.where("empId").is(101));
+		
+		mt.findAndRemove(query, Employee.class);
+		
+		
+		System.out.println("__DONE__");
+		
+	}
+
+}
+
+*)Note:
+=> To delete all rows from a given collection use code:
+   mt.remove(Employee.class).all();
+
+=> dropCollection() is used to delete data and even collection
+   where remove is used to delete data , still collection(empty) exist in Database.
+
+===================================================================================
