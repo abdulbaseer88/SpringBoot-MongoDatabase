@@ -1,0 +1,262 @@
+			
+		  MongoRepository(I) Operations
+
+=> Here, In Mongodb, we can use all find methods which are similer to Data JPA.
+   ie findAll(), findById(), findByExample(), findAllByIds(),  findBy___() [Custom find]
+   ...etc
+
+---Example code---
+1. Model class
+package in.nareshit.raghu.model;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@RequiredArgsConstructor
+@AllArgsConstructor
+@Document
+public class Student {
+	@Id
+	private String id;
+	
+	@NonNull
+	private Integer stdId;
+	@NonNull
+	private String stdName;
+	@NonNull
+	private Double stdFee;
+	
+}
+
+2. Repository Interface
+package in.nareshit.raghu.repo;
+
+import java.util.Optional;
+
+import org.springframework.data.mongodb.repository.MongoRepository;
+
+import in.nareshit.raghu.model.Student;
+
+public interface StudentRepository 
+	extends MongoRepository<Student, String> {
+
+	//Student findByStdId(Integer stdId);
+	Optional<Student> findByStdId(Integer stdId);
+	
+}
+
+3. Runner class
+package in.nareshit.raghu.runner;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
+
+import in.nareshit.raghu.model.Student;
+import in.nareshit.raghu.repo.StudentRepository;
+
+@Component
+public class StudentTestOneRunner implements CommandLineRunner {
+	@Autowired
+	private StudentRepository repo;
+	
+	@Override
+	public void run(String... args) throws Exception {
+		repo.deleteAll(); // like ddl-auto-create
+	
+		repo.save(new Student(101, "A", 3.2));
+		repo.save(new Student(102, "B", 4.2));
+		repo.save(new Student(103, "C", 5.2));
+		String id = repo.save(new Student(104, "D", 6.2)).getId();
+		
+		
+		// --print all
+		List<Student> list =  repo.findAll();
+		list.forEach(System.out::println);
+		
+		System.out.println("-----------------------");
+		
+		//print by id
+		Optional<Student> opt = repo.findById(id);
+		//Optional<Student> opt = repo.findById("AAAA");
+		if(opt.isPresent()) {
+			Student s = opt.get();
+			System.out.println(s);
+		} else {
+			System.out.println("Given Id not fund");
+		}
+		System.out.println("=============");
+		Optional<Student> opt2 =  repo.findByStdId(103);
+		if(opt2.isPresent()) {
+			Student s = opt2.get();
+			System.out.println(s);
+		} else {
+			System.out.println("Given stdId not fund");
+		}
+		System.out.println("___Done___");
+		
+	}
+
+}
+
+4. application.properties
+spring.data.mongodb.host=localhost
+spring.data.mongodb.port=27017
+spring.data.mongodb.database=nit
+spring.data.mongodb.username=nit
+spring.data.mongodb.password=raghu
+==============================================================================
+		Special Types : Spring Boot - Mongo DB
+==============================================================================
+1. List/Set/Array
+
+2. Map/Properties
+
+3. HAS-A Type (non-Collection)   
+
+4. HAS-A Type Collection (List/Map)
+-------------------------------
+=> Data in MongoDB, will store in JSON Format. So, any type that will be converted into
+   JSON only.
+
+1. List/Set/Array  : JSON Format  [ val,val,val,.... ]
+2. Map/Properties  : JSON Format  { key:val, key:val, key:val}
+
+--code---
+1. Model class
+package in.nareshit.raghu.model;
+
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Document
+public class Student {
+	@Id
+	private String id;
+	
+	private Integer stdId;
+	private String stdName;
+	
+	private List<Integer> stdMarks;
+	private String[] stdSubjNames;
+	//private Set<String> stdSubjNames;
+	
+	private Map<String,String> examGrades;
+	
+	
+}
+
+2. Repository Interface
+package in.nareshit.raghu.repo;
+
+import org.springframework.data.mongodb.repository.MongoRepository;
+
+import in.nareshit.raghu.model.Student;
+
+public interface StudentRepository 
+	extends MongoRepository<Student, String> {
+
+	
+}
+
+3. Runner class
+package in.nareshit.raghu.runner;
+
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
+
+import in.nareshit.raghu.model.Student;
+import in.nareshit.raghu.repo.StudentRepository;
+
+@Component
+public class StudentTestOneRunner implements CommandLineRunner {
+	@Autowired
+	private StudentRepository repo;
+
+	@Override
+	public void run(String... args) throws Exception {
+		repo.deleteAll(); // like ddl-auto-create
+
+
+		repo.save(new Student("A001",101, "A",
+					List.of(83,95,76),
+					new String[] {"ENG","MAT","SCI"},
+					//Set.of("ENG","MAT","SCI")
+					Map.of("ENG","A","MAT","A+","SCI","B")
+					));
+
+
+		System.out.println("___Done___");
+
+	}
+
+}
+
+4. application.properties
+spring.data.mongodb.host=localhost
+spring.data.mongodb.port=27017
+spring.data.mongodb.database=nit
+spring.data.mongodb.username=nit
+spring.data.mongodb.password=raghu
+
+
+--output--
+> db.student.find().pretty();
+{
+        "_id" : "A001",
+        "stdId" : 101,
+        "stdName" : "A",
+        "stdMarks" : [
+                83,
+                95,
+                76
+        ],
+        "stdSubjNames" : [
+                "ENG",
+                "MAT",
+                "SCI"
+        ],
+        "examGrades" : {
+                "SCI" : "B",
+                "ENG" : "A",
+                "MAT" : "A+"
+        },
+        "_class" : "in.nareshit.raghu.model.Student"
+}
+--------------------------- MongoDB UI -------------------------
+1. Download Link:
+  https://robomongo.org/download
+2. Download Robo 3T Option
+3. Choose OS Link (Windows) and click on robo3t-1.4.1-windows-x86_64-122dbd9.exe
+4. Double click on EXE > next > Next > Finish
+5. Click on I Agree > Finish
+6. Open Robo 3t
+> File > Connect > Create Link
+> Click on Authentication tab
+>  Enter detals > click on save (one time)
+-------------------------------------------------------------------
