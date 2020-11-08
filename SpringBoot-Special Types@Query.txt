@@ -1,0 +1,450 @@
+	
+==============================================================================
+		Special Types : Spring Boot - Mongo DB
+==============================================================================
+3. HAS-A Type (non-Collection)   
+4. HAS-A Type Collection (List/Map)
+-------------------------------------
+
+3. HAS-A Type (non-Collection)   : if two model classes are connected using HAS-A
+   relation then two objects are created for them, even linked with each other.
+
+ But, in mongo DB, they are stored as one JSON Document, in below format:
+
+ {
+    // parent JSON
+    
+    "hasAvaiable" : {
+      // child JSOn
+    }
+ 
+ }
+
+---code---
+1. Model classes
+package in.nareshit.raghu.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Vendor {
+
+	private Integer id;
+	private String code;
+}
+
+package in.nareshit.raghu.model;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Document
+public class Product {
+	@Id
+	private String id;
+	
+	private Integer pid;
+	private String pcode;
+	private Double pcost;
+	
+	private Vendor vob;
+}
+
+2. Repository Interface
+package in.nareshit.raghu.repo;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import in.nareshit.raghu.model.Product;
+
+public interface ProductRepositry extends MongoRepository<Product, String> {
+
+}
+
+3. Runner class
+package in.nareshit.raghu.runner;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
+
+import in.nareshit.raghu.model.Product;
+import in.nareshit.raghu.model.Vendor;
+import in.nareshit.raghu.repo.ProductRepositry;
+
+@Component
+public class TestDataRunner implements CommandLineRunner {
+	@Autowired
+	private ProductRepositry repo;
+	
+	@Override
+	public void run(String... args) throws Exception {
+		Vendor vob = new Vendor(110, "VA");
+		Product pob = new Product("A001", 101, "PEN", 50.0, vob);
+		
+		repo.save(pob);
+		
+		System.out.println("___DONE__");
+	}
+}
+
+4. application.propreties
+spring.data.mongodb.host=localhost
+spring.data.mongodb.port=27017
+spring.data.mongodb.database=nit
+spring.data.mongodb.username=nit
+spring.data.mongodb.password=raghu
+
+5. Start Mongo Server and at Mongo Client:
+> db.product.find().pretty();
+
+--output---
+{
+        "_id" : "A001",
+        "pid" : 101,
+        "pcode" : "PEN",
+        "pcost" : 50,
+        "vob" : {
+                "_id" : 110,
+                "code" : "VA"
+        },
+        "_class" : "in.nareshit.raghu.model.Product"
+}
+
+==============================================================
+4. HAS-A Type Collection (List/Map)
+
+JSON Format: for List Child Type
+
+{
+   //parent
+
+   "hasAvariable" :  [ {//child-obj-1}, {//child-obj-2}, {}, {},....]
+
+}
+
+JSON Format: for Map Child Type
+
+{
+   //parent
+
+   "hasAvariable" :  { key1:{//child-obj-1}, key2:{//child-obj-2}, key3:{}, ....}
+
+}
+
+---code---
+1. Model classes
+package in.nareshit.raghu.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Info {
+
+	private Integer id;
+	private String data;
+}
+
+
+package in.nareshit.raghu.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Vendor {
+
+	private Integer id;
+	private String code;
+}
+
+
+
+
+package in.nareshit.raghu.model;
+
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Document
+public class Product {
+	@Id
+	private String id;
+	
+	private Integer pid;
+	private String pcode;
+	private Double pcost;
+	
+	private List<Vendor> vob;
+	private Map<String,Info> infobs;
+}
+
+
+2) Repository Interface
+package in.nareshit.raghu.repo;
+
+import org.springframework.data.mongodb.repository.MongoRepository;
+
+import in.nareshit.raghu.model.Product;
+
+public interface ProductRepositry extends MongoRepository<Product, String> {
+
+}
+
+3) Runner class:
+package in.nareshit.raghu.runner;
+
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
+
+import in.nareshit.raghu.model.Info;
+import in.nareshit.raghu.model.Product;
+import in.nareshit.raghu.model.Vendor;
+import in.nareshit.raghu.repo.ProductRepositry;
+
+@Component
+public class TestDataRunner implements CommandLineRunner {
+	@Autowired
+	private ProductRepositry repo;
+	
+	@Override
+	public void run(String... args) throws Exception {
+		repo.deleteAll();
+		
+		Product pob = new Product("A001", 101, "PEN", 50.0,
+				List.of(
+						new Vendor(100, "VA"),
+						new Vendor(101, "VB"),
+						new Vendor(102, "VC")
+						),
+				Map.of(
+						"I1", new Info(55,"OK"),
+						"I2", new Info(56,"ACTIVE"),
+						"I3", new Info(57,"DONE")
+						)
+				);
+		
+		repo.save(pob);
+		
+		System.out.println("___DONE__");
+	}
+}
+
+4) MongoDB Command and output:
+> db.product.find().pretty();
+{
+        "_id" : "A001",
+        "pid" : 101,
+        "pcode" : "PEN",
+        "pcost" : 50,
+        "vob" : [
+                {
+                        "_id" : 100,
+                        "code" : "VA"
+                },
+                {
+                        "_id" : 101,
+                        "code" : "VB"
+                },
+                {
+                        "_id" : 102,
+                        "code" : "VC"
+                }
+        ],
+        "infobs" : {
+                "I2" : {
+                        "_id" : 56,
+                        "data" : "ACTIVE"
+                },
+                "I1" : {
+                        "_id" : 55,
+                        "data" : "OK"
+                },
+                "I3" : {
+                        "_id" : 57,
+                        "data" : "DONE"
+                }
+        },
+        "_class" : "in.nareshit.raghu.model.Product"
+}
+============================  @Query =======================================
+
+-code--
+1. Model
+package in.nareshit.raghu.model;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Document
+public class Book {
+	@Id
+	private Integer id;
+	
+	private String bname;
+	private Integer pages;
+	private String author;
+	private String btype;
+	
+}
+
+2. Repository interface
+package in.nareshit.raghu.repo;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
+
+import in.nareshit.raghu.model.Book;
+
+public interface BookRepository extends MongoRepository<Book, Integer> {
+
+	//---custom query methods---------
+	
+	//SQL: SELECT * FROM BOOK WHERE ID=?
+	@Query("{id : ?0 }")
+	Optional<Book> getBookById(Integer id);
+	
+	@Query("{ pages :  { $lt: ?0 } }") // where pages<?
+	//@Query("{ pages :  { $gte: ?0 } }") // where pages>=?
+	//@Query("{ pages : ?0 }") // where pages=?
+	List<Book> getBooksByPages(Integer pages);
+	
+	
+	// where author = ?
+	@Query("{ author : ?0}")
+	List<Book> getBooksByAuthor(String author);
+	
+	// where author = ? and btype =? 
+	@Query("{ author : ?0 , btype: ?1}")
+	List<Book> getBooksByAuthorAndType(String author,String btype);
+	
+	
+	// where author = ? or btype =? 
+	//@Query("{$and : [{ author : ?0 } , { btype: ?1}]}")
+	@Query("{$or : [{ author : ?0 } , { btype: ?1}]}")
+	List<Book> getBooksByAuthorOrType(String author,String btype);
+	
+	
+	//SQL: select count(*) from book where author=?
+	@Query(value = "{ author : ?0}", count = true)
+	Integer getBooksCountByAuthor(String author);
+	
+	//Sorting
+	@Query(value = "{ author : ?0}", sort ="{ bname:1 }") //ASC
+	//@Query(value = "{ author : ?0}", sort ="{ bname:-1 }") //DESC
+	List<Book> getBooksByAuthorortByBname(String author);
+}
+
+3. Runner class for Insert
+package in.nareshit.raghu.runner;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+
+import in.nareshit.raghu.model.Book;
+import in.nareshit.raghu.repo.BookRepository;
+
+//@Component
+public class BookInsertRunner implements CommandLineRunner {
+	@Autowired
+	private BookRepository repo;
+	
+	@Override
+	public void run(String... args) throws Exception {
+		repo.deleteAll();
+		
+		repo.save(new Book(100, "Core Java", 200, "SAM", "BASICS"));
+		repo.save(new Book(101, "Adv Java",  300, "SAM", "WEB"));
+		repo.save(new Book(102, "SPRING",    480, "SYED", "WEB"));
+		repo.save(new Book(103, "ANGULAR",   260, "SYED", "UI"));
+		repo.save(new Book(104, "HTML CSS",  100, "RAM", "UI"));
+		repo.save(new Book(105, "C++",       180, "SAM", "BASICS"));
+		repo.save(new Book(106, "C",         100, "RAM", "BASICS"));
+		repo.save(new Book(107, "SPRING BOOT",850, "RAM", "WEB"));
+		repo.save(new Book(108, "JQuery",    120, "SYED", "UI"));
+		repo.save(new Book(109, "DP",        280, "SAM", "BASICS"));
+		
+		System.out.println("___DONE___");
+	}
+
+}
+
+4. Runner class for test
+package in.nareshit.raghu.runner;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
+
+import in.nareshit.raghu.repo.BookRepository;
+
+@Component
+public class TestQueryRunner implements CommandLineRunner {
+	@Autowired
+	private BookRepository repo;
+	
+	@Override
+	public void run(String... args) throws Exception {
+		/*
+		Optional<Book> opt =  repo.getBookById(100);
+		if(opt.isPresent()) System.out.println(opt.get());
+		else System.out.println("DATA NOT FOUND");
+		*/
+		
+		//repo.getBooksByAuthor("SAM").forEach(System.out::println);
+		//repo.getBooksByPages(400).forEach(System.out::println);
+		//repo.getBooksByAuthorAndType("SAM","BASICS").forEach(System.out::println);
+		//repo.getBooksByAuthorOrType("SAM","BASICS").forEach(System.out::println);
+		
+		//Integer count = repo.getBooksCountByAuthor("SAM");	System.out.println(count);
+		
+		repo.getBooksByAuthorortByBname("SAM").forEach(System.out::println);
+		
+		
+	}
+
+}
+	=================================================
+Task: Write @Query for : sum, min, max, like, in, between
+Link: https://docs.mongodb.com/v3.6/tutorial/query-documents/
+      https://docs.mongodb.com/v3.6/reference/operator/query/#query-selectors
