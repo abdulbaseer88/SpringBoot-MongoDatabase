@@ -1,0 +1,74 @@
+	
+		Spring Boot @Query using MongoDB - Part#2
+
+
+-- @Query with Projection --
+*) By default @Query in Mongo DB selects all fields 
+   (ie all variables from DB into Model class)
+
+*) Now we can specify attribute @Query(fields="{ variable : 1 }")
+
+  Here 1 (one) indicates select field and display
+  and  0 (zero) indicates do not select field
+
+ => By default every field is set to 0 (zero) and id(PK) is set to 1
+
+Ex#1
+@Query(
+	value="{ btype : ?0 }",    // where condition
+	fields = "{  bname : 1, author : 1  }"    //select clause
+)
+
+is equals to SQL:
+  select id,bname,author from books where btype=?  ( by default id is added)
+
+Ex:#2
+@Query(
+	value="{ btype : ?0 }",    // where condition
+	fields = "{ id : 0 ,  bname : 1, author : 1  }"    //select clause
+)
+
+is equals to SQL:
+  select bname,author from books where btype=?
+
+Ex#3 Special case
+@Query(
+	value="{ btype : ?0 }",    // where condition
+	fields = "{   }"    //select clause (empty)
+)
+ is equals to
+@Query(value="{ btype : ?0 }")
+is equals to SQL:
+  select * from books where btype=?
+ ===============================================================
+MongoDb Regular Expressions
+
+                            In Mongo         in SQL
+
+Starts with given input :   ^input           input%
+Ends with given input   :   input$           %input
+
+Cntains given input     :   input           %input%
+                            ^input$ (not supported by every MongoDB version)
+                           
+
+=> While defining @Query method use $regex  and pass dynamic input using ? or static
+   expression like ^input, input$ ..etc
+
+ex:
+@Query("{ author : { $regex : ?0 } }")
+List<Book> getBooksByAuthorRegEx(String author);
+
+In Runner class:
+//starts with S => ^S (In SQL : S%)
+
+repo.getBooksByAuthorRegEx("^S").forEach(System.out::println);
+		
+// ends with AM => AM$ ( In SQL : %AM)
+repo.getBooksByAuthorRegEx("AM$").forEach(System.out::println);
+		
+// contains A => ^A% (or A) [in SQL : %A%]
+repo.getBooksByAuthorRegEx("Y").forEach(System.out::println);
+
+Document Link:
+https://docs.mongodb.com/v3.6/tutorial/query-documents/
